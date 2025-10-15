@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Management Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div id="errorMessage"></div>
+    <div class="container">
+        <!-- Add project modal -->
+        <div class="project-modal" id="projectModal">
+            <div class="project-modal-content">
+                <div class="project-tasks-header">
+                    <h2 id="projectModalTitle"></h2>
+                    <button onclick="closeProjectModal()">×</button>
+                </div>
+                <div class="task-list" id="projectTaskList"></div>
+            </div>
+        </div>
+        
+        <!-- Task Edit Modal -->
+        <div class="project-modal" id="taskEditModal">
+            <div class="project-modal-content">
+                <h2>Edit Task</h2>
+                <form id="editTaskForm">
+                    <input type="text" id="editTaskInput" placeholder="Task name" required>
+                    <div class="date-inputs">
+                        <input type="date" id="editStartDate" required>
+                        <input type="date" id="editEndDate" required>
+                    </div>
+                    <select id="editProjectSelect" required>
+                        <option value="">Select Project</option>
+                    </select>
+                    <div class="select-inputs">
+                        <select id="editStatusSelect" required>
+                            <option value="Not Started">Not Started</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                        <select id="editPrioritySelect" required>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="submit">Update Task</button>
+                        <button type="button" onclick="closeEditModal()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sidebar Menu -->
+        <div class="sidebar">
+            <h2>ZenFocus</h2>
+            <ul class="menu-items">
+                <li class="menu-item active" onclick="showModule('dashboard')">📊 Dashboard</li>
+                <li class="menu-item" onclick="showModule('projects')">📁 Projects</li>
+                <li class="menu-item" onclick="showModule('calendar')">📅 Calendar</li>
+                <li class="menu-item" onclick="showModule('todo')">📝 Todo List</li>
+                <li class="menu-item" onclick="showModule('timer')">⏱️ Focus Timer</li>
+                <li class="menu-item" onclick="showModule('budget')">💰 Budget</li>
+                <li class="menu-item" onclick="showModule('notes')">📝 Notes</li>
+            </ul>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Dashboard Module -->
+            <div id="dashboard" class="module">
+                <div class="dashboard-grid">
+                    <!-- Left Column -->
+                    <div>
+                        <h2>Tasks for <span id="selectedDateLabel"></span></h2>
+                        <div class="task-list" id="dashboardTaskList"></div>
+                       
+                        <!-- Project Progress -->
+                        <div class="project-stats">
+                            <h3>Project Progress</h3>
+                            <div id="projectStats"></div>
+                        </div>
+                    </div>
+                   
+                    <!-- Right Column -->
+                    <div class="calendar">
+                        <div class="calendar-header">
+                            <button onclick="changeMonth(-1, true)">←</button>
+                            <h3 id="compactMonth"></h3>
+                            <button onclick="changeMonth(1, true)">→</button>
+                        </div>
+                        <div class="calendar-grid" id="compactCalendar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="notes" class="module" style="display: none;">
+                <div class="notes-header">
+                    <h2>Notes</h2>
+                    <button class="new-note-btn" onclick="openNoteEditor()">+ New Note</button>
+                </div>
+                
+                <div class="notes-grid" id="notesContainer"></div>
+                
+                <!-- Note Editor Modal -->
+                <div class="note-modal" id="noteModal">
+                    <div class="note-modal-content">
+                        <div class="note-modal-header">
+                            <h3 id="noteModalTitle">New Note</h3>
+                            <button class="close-btn" onclick="closeNoteEditor()">&times;</button>
+                        </div>
+                        <form id="noteForm">
+                            <input type="text" id="noteTitle" placeholder="Note title" required>
+                            <textarea id="noteContent" placeholder="Start writing..." rows="8"></textarea>
+                            <div class="note-tags" id="noteTags"></div>
+                            <div class="note-actions">
+                                <button type="submit" class="save-btn">Save Note</button>
+                                <button type="button" class="cancel-btn" onclick="closeNoteEditor()">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Projects Module -->
+            <div id="projects" class="module">
+                <div class="project-header">
+                    <h2>Projects</h2>
+                    <!-- <button onclick="showCreateProjectForm()">+ New Project</button> -->
+                </div>
+                <div id="projectsList"></div>
+                <div id="createProjectForm">
+                    <div class="todo-form">
+                        <input type="text" id="projectName" placeholder="Project name">
+                        <div class="form-buttons">
+                            <button onclick="createProject()">Create</button>
+                            <button onclick="cancelProjectCreate()">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendar Module -->
+            <div id="calendar" class="module">
+                <h2>Calendar</h2>
+                <div class="calendar-header">
+                    <button onclick="changeMonth(-1)">←</button>
+                    <h3 id="currentMonth"></h3>
+                    <button onclick="changeMonth(1)">→</button>
+                </div>
+                <div class="calendar-grid" id="mainCalendar"></div>
+                <div class="month-navigation">
+                    <div class="view-options">
+                        <div class="view-option active">Month</div>
+                        <div class="view-option">Week</div>
+                        <div class="view-option">Day</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Focus Timer -->
+            <div id="timer" class="module">
+                <h2>Focus Timer</h2>
+                <div class="timer-container">
+                    <div class="timer-display" id="timerDisplay">25:00</div>
+                    <div class="timer-controls">
+                        <button id="startTimer">Start</button>
+                        <button id="pauseTimer">Pause</button>
+                        <button id="resetTimer">Reset</button>
+                    </div>
+                    <div class="timer-settings">
+                        <div class="timer-mode">
+                            <button class="mode-btn active" data-mode="pomodoro">Pomodoro</button>
+                            <button class="mode-btn" data-mode="shortBreak">Short Break</button>
+                            <button class="mode-btn" data-mode="longBreak">Long Break</button>
+                        </div>
+                        <div class="timer-config">
+                            <label>
+                                Pomodoro (min):
+                                <input type="number" id="pomodoroTime" value="25" min="1">
+                            </label>
+                            <label>
+                                Short Break (min):
+                                <input type="number" id="shortBreakTime" value="5" min="1">
+                            </label>
+                            <label>
+                                Long Break (min):
+                                <input type="number" id="longBreakTime" value="15" min="1">
+                            </label>
+                        </div>
+                    </div>
+                    <div class="timer-stats">
+                        <div>Completed Pomodoros: <span id="completedPomodoros">0</span></div>
+                        <div>Today's Focus: <span id="todayFocusTime">0</span> min</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Budget Module -->
+            <div id="budget" class="module">
+                <h2>Project Budget Tracker</h2>
+                <div class="budget-container">
+                    <div class="budget-summary">
+                        <div class="budget-card">
+                            <h3>Total Budget</h3>
+                            <div class="budget-amount" id="totalBudget">$0.00</div>
+                        </div>
+                        <div class="budget-card">
+                            <h3>Total Expenses</h3>
+                            <div class="budget-amount" id="totalExpenses">$0.00</div>
+                        </div>
+                        <div class="budget-card">
+                            <h3>Remaining</h3>
+                            <div class="budget-amount" id="remainingBudget">$0.00</div>
+                        </div>
+                    </div>
+                    
+                    <div class="budget-form">
+                        <h3>Add Budget Item</h3>
+                        <form id="budgetForm">
+                            <select id="budgetProjectSelect" required>
+                                <option value="">Select Project</option>
+                            </select>
+                            <select id="budgetType" required>
+                                <option value="income">Income</option>
+                                <option value="expense">Expense</option>
+                            </select>
+                            <input type="text" id="budgetDescription" placeholder="Description" required>
+                            <input type="number" id="budgetAmount" placeholder="Amount" min="0" step="0.01" required>
+                            <input type="date" id="budgetDate" required>
+                            <select id="budgetCategory">
+                                <option value="general">General</option>
+                                <option value="development">Development</option>
+                                <option value="marketing">Marketing</option>
+                                <option value="design">Design</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <button type="submit">Add Item</button>
+                        </form>
+                    </div>
+                    
+                    <div class="budget-transactions">
+                        <h3>Recent Transactions</h3>
+                        <div class="transaction-list" id="transactionList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Todo List Module -->
+            <div id="todo" class="module">
+                <h2>Todo List Manager</h2>
+                <form id="todoForm" class="todo-form">
+                    <input type="text" id="taskInput" placeholder="New task name" required>
+                    <div class="date-inputs">
+                        <input type="date" id="startDate" required>
+                        <input type="date" id="endDate" required>
+                    </div>
+                    <select id="projectSelect" required>
+                        <option value="">Select Project</option>
+                    </select>
+                    <div class="select-inputs">
+                        <select id="statusSelect" required>
+                            <option value="Not Started">Not Started</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                        <select id="prioritySelect" required>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                    <button type="submit">Add Task</button>
+                </form>
+                <div class="task-list" id="taskList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="firebase-config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
